@@ -1,0 +1,83 @@
+name: Build and Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install Nim
+      run: |
+        curl https://nim-lang.org/choosenim/init.sh -sSf | sh -s -- -y
+        echo "$HOME/.nimble/bin" >> $GITHUB_PATH
+    
+    - name: Setup Emscripten
+      uses: mymindstorm/setup-emsdk@v14
+      with:
+        version: 'latest'
+    
+    - name: Verify installations
+      run: |
+        nim --version
+        emcc --version
+    
+    - name: Build WebAssembly
+      run: |
+        nim c -d:emscripten \
+          --os:linux --cpu:wasm32 \
+          --cc:clang --clang.exe:emcc --clang.linkerexe:emcc \
+          --passC:"-s WASM=1" \
+          --passL:"-s WASM=1" \
+          --passL:"-s EXPORTED_FUNCTIONS='[\"_emInit\",\"_emUpdate\",\"_emResize\",\"_emGetWidth\",\"_emGetHeight\",\"_emGetCell\",\"_emGetCellStyle\",\"_emHandleKey\",\"_main\"]'" \
+          --passL:"-s EXPORTED_RUNTIME_METHODS='[\"ccall\",\"cwrap\",\"UTF8ToString\"]'" \
+          --passL:"-s ALLOW_MEMORY_GROWTH=1" \
+          --passL:"-s MODULARIZE=0" \
+          --passL:"-s ENVIRONMENT=web" \
+          --passL:"-s INITIAL_MEMORY=16MB" \
+          -o:prehistorie.wasm.js \
+          prehistorie.nim
+    
+    - name: Prepare deployment
+      run: |
+        mkdir -p deploy
+        cp index.html deploy/
+        cp prehistorie.js deploy/
+        cp prehistorie.wasm.js deploy/
+        cp prehistorie.wasm deploy/
+        ls -lh deploy/
+    
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: 'deploy'
+  
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push'
+    
+    steps:
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4

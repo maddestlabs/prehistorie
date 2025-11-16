@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prehistorie - Terminal Engine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        #container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 20px;
+        }
+        
+        #terminal {
+            background: #000;
+            border: 2px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            position: relative;
+        }
+        
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+        
+        #loading {
+            text-align: center;
+            padding: 40px;
+            color: #0f0;
+        }
+        
+        #error {
+            color: #f00;
+            padding: 20px;
+            display: none;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="terminal">
+            <div id="loading">Loading Prehistorie...</div>
+            <div id="error"></div>
+            <canvas id="canvas" class="hidden"></canvas>
+        </div>
+    </div>
+    
+    <script src="prehistorie.js"></script>
+</body>
+</html>
