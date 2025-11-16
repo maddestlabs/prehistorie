@@ -1,6 +1,8 @@
-# Prehistorie - Terminal Engine
+# Prehistorie
 
-A minimal, cross-platform terminal rendering engine with plugin support. Runs natively on Linux/macOS/Windows and compiles to WebAssembly for browser deployment.
+Template for building interesting things in Nim. Runs natively on Linux/macOS/Windows and compiles to WebAssembly for browser deployment for easy prototyping.
+
+[![Use this template](https://img.shields.io/badge/use%20this-template-blue?logo=github)](https://github.com/yourusername/prehistorie/generate)
 
 ## Features
 
@@ -14,6 +16,8 @@ A minimal, cross-platform terminal rendering engine with plugin support. Runs na
 - 🎯 **Resize handling** - Automatic terminal size detection
 
 ## Quick Start
+
+Simply create a repo from this template, customize prehistorie.nim and it will automatically compile for web. Enable GitHub Pages and it serves the results.
 
 ### Native Build
 
