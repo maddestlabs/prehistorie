@@ -1,6 +1,13 @@
 # Prehistorie
 
-Template for building interesting things in Nim. Runs natively on Linux/macOS/Windows and compiles to WebAssembly for browser deployment for easy prototyping.
+Template for building interesting things in Nim. Build Nim terminal apps and games without installing Nim. See them working live on the web via GitHub Pages.
+
+How the template works:
+- When commits are made to the repo, GitHub Action will automatically compiles prehistorie.nim for both web(wasm) and linux.
+- Compiled binaries made avalailable as releases.
+- Makes compiled web(wasm) version available to GitHub Pages.
+
+So basically, any changes(git commits) made to prehistorie.nim results in compilation and results are quickly made available directly on GitHub Pages.
 
 [![Use this template](https://img.shields.io/badge/use%20this-template-blue?logo=github)](https://github.com/yourusername/prehistorie/generate)
 
