@@ -1,4 +1,4 @@
-name: Build and Deploy to GitHub Pages
+name: Build and Deploy
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -36,11 +36,27 @@ jobs:
     
     - name: Verify installations
       run: |
+        echo "==> Nim version:"
         nim --version
+        echo ""
+        echo "==> Emscripten version:"
         emcc --version
+    
+    - name: Build Linux Binary
+      run: |
+        echo "==> Building Linux binary..."
+        nim c -d:release -o:prehistorie prehistorie.nim
+        chmod +x prehistorie
+        
+        # Package it
+        tar -czf prehistorie-linux-x64.tar.gz prehistorie README.md
+        
+        echo "✓ Linux binary built and packaged"
+        ls -lh prehistorie prehistorie-linux-x64.tar.gz
     
     - name: Build WebAssembly
       run: |
+        echo "==> Building WebAssembly..."
         nim c -d:emscripten \
           --os:linux --cpu:wasm32 \
           --cc:clang --clang.exe:emcc --clang.linkerexe:emcc \
@@ -54,22 +70,105 @@ jobs:
           --passL:"-s INITIAL_MEMORY=16MB" \
           -o:prehistorie.wasm.js \
           prehistorie.nim
+        
+        # Fix double .wasm extension
+        if [ -f "prehistorie.wasm.wasm" ]; then
+          mv prehistorie.wasm.wasm prehistorie.wasm
+          echo "✓ Fixed: .wasm.wasm → .wasm"
+        fi
+        
+        # Fix references in JS
+        if [ -f "prehistorie.wasm.js" ]; then
+          sed -i 's/prehistorie\.wasm\.wasm/prehistorie.wasm/g' prehistorie.wasm.js
+          echo "✓ Fixed JS references"
+        fi
     
-    - name: Prepare deployment
+    - name: Verify builds
+      run: |
+        echo "==> Verifying builds..."
+        
+        # Check files exist
+        for file in prehistorie prehistorie-linux-x64.tar.gz prehistorie.wasm prehistorie.wasm.js; do
+          if [ ! -f "$file" ]; then
+            echo "❌ Missing: $file"
+            exit 1
+          fi
+        done
+        
+        # Check for bad references
+        if grep -q "\.wasm\.wasm" prehistorie.wasm.js; then
+          echo "❌ Found .wasm.wasm references in JS"
+          exit 1
+        fi
+        
+        echo "✓ All builds verified"
+        echo ""
+        echo "==> Build artifacts:"
+        ls -lh prehistorie prehistorie-linux-x64.tar.gz prehistorie.wasm prehistorie.wasm.js
+    
+    - name: Prepare GitHub Pages
       run: |
         mkdir -p deploy
+        
+        # Copy web files
         cp index.html deploy/
         cp prehistorie.js deploy/
         cp prehistorie.wasm.js deploy/
         cp prehistorie.wasm deploy/
-        ls -lh deploy/
+        
+        # Add download section to the page
+        cat >> deploy/index.html << 'EOF'
+        <div style="position: fixed; bottom: 20px; right: 20px; background: #1a1a1a; border: 2px solid #333; border-radius: 8px; padding: 15px; font-family: monospace;">
+          <div style="color: #0f0; font-weight: bold; margin-bottom: 10px;">📦 Downloads</div>
+          <a href="https://github.com/${{ github.repository }}/raw/main/prehistorie-linux-x64.tar.gz" 
+             style="display: block; color: #0ff; text-decoration: none; margin: 5px 0;"
+             download>🐧 Linux Binary</a>
+          <a href="https://github.com/${{ github.repository }}" 
+             style="display: block; color: #0ff; text-decoration: none; margin: 5px 0;">
+             📖 View Source</a>
+        </div>
+        EOF
+        
+        echo "✓ GitHub Pages prepared"
     
-    - name: Upload artifact
+    - name: Upload Linux binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-binary
+        path: prehistorie-linux-x64.tar.gz
+        retention-days: 90
+    
+    - name: Upload web files
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-files
+        path: |
+          prehistorie.wasm
+          prehistorie.wasm.js
+          prehistorie.js
+          index.html
+        retention-days: 90
+    
+    - name: Upload Pages artifact
       uses: actions/upload-pages-artifact@v3
       with:
         path: 'deploy'
-  
-  deploy:
+    
+    - name: Commit Linux binary to repo (if changed)
+      if: github.event_name == 'push'
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
+        # Only commit if file changed
+        if [ -f prehistorie-linux-x64.tar.gz ]; then
+          git add -f prehistorie-linux-x64.tar.gz || true
+          git diff --staged --quiet || git commit -m "🤖 Auto-build: Update Linux binary [skip ci]"
+          git push || echo "No changes to push"
+        fi
+      continue-on-error: true
+
+  deploy-pages:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -81,3 +180,9 @@ jobs:
     - name: Deploy to GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
+    
+    - name: Post deployment info
+      run: |
+        echo "🎉 Deployment successful!"
+        echo "🌐 Web version: ${{ steps.deployment.outputs.page_url }}"
+        echo "📦 Linux binary: Available as artifact"

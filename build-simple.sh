@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Simplified build script using Nim's Emscripten support
-
 set -e
 
 echo "Building Prehistorie..."
@@ -43,12 +41,49 @@ nim c -d:emscripten \
     -o:prehistorie.wasm.js \
     prehistorie.nim
 
+# Fix the double .wasm.wasm extension
+if [ -f "prehistorie.wasm.wasm" ]; then
+    echo "✓ Renaming: prehistorie.wasm.wasm → prehistorie.wasm"
+    mv prehistorie.wasm.wasm prehistorie.wasm
+fi
+
+# Fix references in the .js file
 if [ -f "prehistorie.wasm.js" ]; then
+    echo "✓ Fixing .wasm references in prehistorie.wasm.js"
+    
+    # Replace all occurrences of .wasm.wasm with .wasm in the JS file
+    # Use different approaches for macOS (BSD sed) vs Linux (GNU sed)
+    if sed --version 2>&1 | grep -q GNU; then
+        # GNU sed (Linux)
+        sed -i 's/prehistorie\.wasm\.wasm/prehistorie.wasm/g' prehistorie.wasm.js
+    else
+        # BSD sed (macOS)
+        sed -i '' 's/prehistorie\.wasm\.wasm/prehistorie.wasm/g' prehistorie.wasm.js
+    fi
+    
+    # Verify the fix worked
+    if grep -q "prehistorie\.wasm\.wasm" prehistorie.wasm.js; then
+        echo "⚠ Warning: Some .wasm.wasm references may still remain"
+    else
+        echo "✓ All references updated to prehistorie.wasm"
+    fi
+fi
+
+# Verify build succeeded
+if [ -f "prehistorie.wasm.js" ] && [ -f "prehistorie.wasm" ]; then
+    echo ""
     echo "✓ WebAssembly build successful!"
-    echo "  - prehistorie.wasm.js"
-    echo "  - prehistorie.wasm"
+    echo "  - prehistorie.wasm.js (Emscripten glue, $(ls -lh prehistorie.wasm.js | awk '{print $5}'))"
+    echo "  - prehistorie.wasm (WebAssembly binary, $(ls -lh prehistorie.wasm | awk '{print $5}'))"
 else
+    echo ""
     echo "✗ Build failed. Check errors above."
+    if [ ! -f "prehistorie.wasm.js" ]; then
+        echo "  Missing: prehistorie.wasm.js"
+    fi
+    if [ ! -f "prehistorie.wasm" ]; then
+        echo "  Missing: prehistorie.wasm"
+    fi
     exit 1
 fi
 

@@ -698,7 +698,7 @@ function createExportWrapper(name, nargs) {
 var wasmBinaryFile;
 
 function findWasmBinary() {
-  return locateFile("prehistorie.wasm.wasm");
+  return locateFile("prehistorie.wasm");
 }
 
 function getBinarySync(file) {
